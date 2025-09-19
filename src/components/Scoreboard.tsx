@@ -15,6 +15,7 @@ function Scoreboard({ refreshKey }: ScoreboardProps) {
 
   useEffect(() => {
     async function getScoreboard() {
+      //function to fetch recent game results using stored procedure in supabase
       const { data, error } = await supabase.rpc("get_recent_games");
       if (error) {
         console.error(error);
@@ -24,7 +25,7 @@ function Scoreboard({ refreshKey }: ScoreboardProps) {
     }
 
     getScoreboard();
-  }, [refreshKey]);
+  }, [refreshKey]); //using refreshKey prop from the parent to handle statechange of child on every click of parent
 
   return (
     <table className="min-w-full divide-y divide-gray-200 text-center shadow-lg rounded-lg justify-self-start">

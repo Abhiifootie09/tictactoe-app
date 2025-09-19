@@ -39,7 +39,7 @@ function App() {
   const [winningLine, setWinningLine] = useState<number[]>([]);
   const [refreshScoreboard, setRefreshScoreboard] = useState(0);
 
-  // Save game to Supabase
+  // Save game to Supabase DB on every user move
   async function saveGame(
     boardState: (string | null)[],
     player: string,
@@ -57,7 +57,7 @@ function App() {
     if (board[index] || (status !== "in_progress" && status !== "start"))
       return;
 
-    const newBoard = board.slice();
+    const newBoard = board.slice(); //slicing used to create a shallow copy for seamless rendering
     newBoard[index] = currentPlayer;
     const result = checkWinner(newBoard);
 
