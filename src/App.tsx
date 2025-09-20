@@ -38,6 +38,27 @@ function App() {
   const [status, setStatus] = useState("start");
   const [winningLine, setWinningLine] = useState<number[]>([]);
   const [refreshScoreboard, setRefreshScoreboard] = useState(0);
+  const [history, setHistory] = useState<
+    {
+      board: (string | null)[];
+      currentPlayer: string;
+      status: string;
+      winningLine: number[];
+    }[]
+  >([]);
+
+  useEffect(() => {
+    setHistory([
+      {
+        board: initialBoard,
+        currentPlayer: "X",
+        status: "start",
+        winningLine: [],
+      },
+    ]);
+  }, []);
+
+  const [theme, setTheme] = useState("light");
 
   // Save game to Supabase DB on every user move
   async function saveGame(
@@ -79,6 +100,15 @@ function App() {
     saveGame(newBoard, currentPlayer, newStatus).then(() =>
       setRefreshScoreboard((prev) => prev + 1)
     );
+    setHistory((prev) => [
+      ...prev,
+      {
+        board: newBoard,
+        currentPlayer: currentPlayer === "X" ? "O" : "X",
+        status: newStatus,
+        winningLine: result?.winningLine || [],
+      },
+    ]);
   }
 
   function resetGame() {
@@ -86,61 +116,114 @@ function App() {
     setCurrentPlayer("X");
     setStatus("start");
     setWinningLine([]);
+    setHistory([
+      {
+        board: initialBoard,
+        currentPlayer: "X",
+        status: "start",
+        winningLine: [],
+      },
+    ]);
+  }
+
+  function undoMove() {
+    if (history.length > 1) {
+      const prev = history[history.length - 2];
+      setBoard(prev.board);
+      setCurrentPlayer(prev.currentPlayer);
+      setStatus(prev.status);
+      setWinningLine(prev.winningLine);
+      setHistory(history.slice(0, history.length - 1));
+    }
+  }
+
+  function toggleTheme() {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
   }
 
   return (
-    <div className="min-h-screen w-screen bg-gray-100 flex items-center justify-center">
+    <div
+      className={`min-h-screen w-screen flex items-center justify-center ${
+        theme === "dark" ? "bg-gray-900" : "bg-gray-100"
+      }`}
+    >
+      <div className="fixed top-4 left-4 z-50">
+        <button
+          onClick={toggleTheme}
+          className="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-black dark:text-white"
+        >
+          Switch to {theme === "light" ? "Dark" : "Light"} Mode
+        </button>
+      </div>
       <div className="flex flex-row items-start justify-center w-full max-w-6xl mx-auto">
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <h1 className="text-4xl font-bold mb-10 text-gray-800">
-            TicTacToe Game
-          </h1>
-          <div className="bg-white rounded-xl shadow-md p-8 max-w-lg w-full flex flex-col items-center">
-            <div className="w-full mb-5 text-center">
-              <h2 className="text-xl font-semibold">
-                {status === "start"
-                  ? "Click to start"
-                  : status === "in_progress"
-                  ? "Game in Progress"
-                  : "Game Ended"}
-              </h2>
-            </div>
+        <div className="flex flex-row items-start justify-center w-full max-w-6xl mx-auto">
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <h1
+              className={`text-4xl font-bold mb-10 ${
+                theme === "dark" ? "text-white" : "text-gray-800"
+              }`}
+            >
+              TicTacToe Game
+            </h1>
 
-            <div className="grid grid-cols-3 gap-3 w-full">
-              {board.map((cell, idx) => {
-                const isWinningCell = winningLine.includes(idx);
-                return (
+            <div className="bg-white rounded-xl shadow-md p-8 max-w-lg w-full flex flex-col items-center">
+              <div className="w-full mb-5 text-center">
+                <h2 className="text-xl font-semibold">
+                  {status === "start"
+                    ? "Click to start"
+                    : status === "in_progress"
+                    ? "Game in Progress"
+                    : "Game Ended"}
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 w-full">
+                {board.map((cell, idx) => {
+                  const isWinningCell = winningLine.includes(idx);
+                  return (
+                    <button
+                      key={idx}
+                      className={`w-full aspect-square flex items-center justify-center text-4xl font-bold border-2 rounded-md transition focus:outline-none focus:ring-2 ${
+                        isWinningCell
+                          ? "bg-green-200 border-green-500 focus:ring-green-600 hover:bg-green-300"
+                          : "bg-gray-100 border-blue-400 focus:ring-blue-600 hover:bg-blue-100"
+                      }`}
+                      onClick={() => handleClick(idx)}
+                    >
+                      {cell}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-col items-center justify-center mt-6 space-y-4">
+                {history.length > 1 && (
                   <button
-                    key={idx}
-                    className={`w-full aspect-square flex items-center justify-center text-4xl font-bold border-2 rounded-md transition focus:outline-none focus:ring-2 ${
-                      isWinningCell
-                        ? "bg-green-200 border-green-500 focus:ring-green-600 hover:bg-green-300"
-                        : "bg-gray-100 border-blue-400 focus:ring-blue-600 hover:bg-blue-100"
-                    }`}
-                    onClick={() => handleClick(idx)}
+                    onClick={undoMove}
+                    className="px-6 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-700 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-yellow-400"
                   >
-                    {cell}
+                    Undo
                   </button>
-                );
-              })}
-            </div>
-            <div className="flex flex-col items-center justify-center mt-6 space-y-4">
-              {status !== "in_progress" && (
+                )}
                 <button
                   onClick={resetGame}
                   className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-blue-400"
                 >
                   Start New Game
                 </button>
-              )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex-none w-[370px] ml-12">
-          <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">
-            Last 10 results
-          </h2>
-          <Scoreboard refreshKey={refreshScoreboard} />
+          <div className="flex-none w-[370px] ml-12">
+            <h2
+              className={`text-2xl font-bold mb-6 text-center ${
+                theme === "dark" ? "text-white" : "text-gray-800"
+              }`}
+            >
+              Last 10 results
+            </h2>
+            <Scoreboard refreshKey={refreshScoreboard} />
+          </div>
         </div>
       </div>
     </div>
