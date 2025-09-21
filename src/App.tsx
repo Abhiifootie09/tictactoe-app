@@ -3,6 +3,16 @@ import { supabase } from "./supabaseClient";
 import Scoreboard from "./components/Scoreboard";
 import BoardSizeSelector from "./components/BoardSizeSelector";
 import ReactConfetti from "react-confetti";
+import PreviousGamePopup from "./components/PreviousGamePopup";
+
+interface FinishedGame {
+  id: number;
+  board: (string | null)[];
+  board_size: number; // add this
+  current_player: string;
+  status: string;
+  created_at: string;
+}
 
 // Generate all winning lines dynamically for n x n board
 function generateWinningLines(n: number): number[][] {
@@ -70,10 +80,40 @@ function App() {
   const [board, setBoard] = useState<(string | null)[]>(
     createInitialBoard(boardSize)
   );
+  const [previousGames, setPreviousGames] = useState<FinishedGame[]>([]);
+  const [selectedGame, setSelectedGame] = useState<FinishedGame | null>(null);
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [selectedFinishedGameId, setSelectedFinishedGameId] = useState<
+    number | null
+  >(null);
+
   const [currentPlayer, setCurrentPlayer] = useState("X");
   const [status, setStatus] = useState("start");
   const [winningLine, setWinningLine] = useState<number[]>([]);
   const [refreshScoreboard, setRefreshScoreboard] = useState(0);
+  useEffect(() => {
+    async function fetchFinishedGames() {
+      const { data, error } = await supabase
+        .from("games")
+        .select()
+        .in("status", ["draw", "Player X won", "Player O won"])
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error("Error loading previous games: ", error);
+        return;
+      }
+      setPreviousGames(data || []);
+      if (data && data.length > 0) {
+        setSelectedFinishedGameId(data[0].id);
+        setSelectedGame(data[0]);
+      }
+    }
+
+    fetchFinishedGames();
+  }, [refreshScoreboard]);
+
   const [xStats, setXStats] = useState({ wins: 0, losses: 0, draws: 0 });
   const [oStats, setOStats] = useState({ wins: 0, losses: 0, draws: 0 });
   const [showConfetti, setShowConfetti] = useState(false);
@@ -241,7 +281,7 @@ function App() {
 
   return (
     <>
-      <div className="fixed top-60 left-30 z-20 bg-gray-200 p-3 rounded shadow border-blue-400 border-2">
+      <div className="fixed top-60 left-30 z-20 bg-gray-200 p-3 rounded shadow border-gray-700 border-2">
         <BoardSizeSelector
           boardSize={boardSize}
           setBoardSize={setBoardSize}
@@ -252,7 +292,7 @@ function App() {
 
       <div className="mb-4 fixed top-100 left-30 bg-white dark:bg-gray-800 shadow-lg rounded-lg px-6 py-3 font-semibold text-lg text-gray-700 dark:text-gray-200 cursor-default select-none transform transition-transform duration-300 hover:scale-105 text-center max-w-[120px]">
         <div>Game Timer</div>
-        <div>
+        <div className="text-green-600">
           {Math.floor(secondsElapsed / 60)
             .toString()
             .padStart(2, "0")}
@@ -265,7 +305,7 @@ function App() {
           theme === "dark" ? "bg-gray-900" : "bg-gray-100"
         }`}
       >
-        <div className="fixed top-5 left-10 z-50  border-blue-400 border-2">
+        <div className="fixed top-8 left-10 z-50 border-blue-400 border-2">
           <button
             onClick={toggleTheme}
             className="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-black dark:text-white font-semibold"
@@ -273,89 +313,134 @@ function App() {
             Switch to {theme === "light" ? "Dark" : "Light"} Mode
           </button>
         </div>
-        <div className="flex flex-row items-start justify-center w-full max-w-6xl mx-auto">
-          <div className="flex flex-row items-start justify-center w-full max-w-6xl mx-auto">
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <h1
-                className={`text-4xl font-bold mb-10 ${
-                  theme === "dark" ? "text-white" : "text-gray-800"
-                }`}
-              >
-                TicTacToe Game
-              </h1>
-              <div className="mb-5 flex justify-center space-x-8">
-                <div className="bg-blue-100 text-blue-700 rounded px-4 py-2 font-semibold">
-                  X — Wins: {xStats.wins} | Losses: {xStats.losses} | Draws:{" "}
-                  {xStats.draws}
-                </div>
-                <div className="bg-green-100 text-green-700 rounded px-4 py-2 font-semibold">
-                  O — Wins: {oStats.wins} | Losses: {oStats.losses} | Draws:{" "}
-                  {oStats.draws}
-                </div>
+
+        {/* Main flex container with vertical centering */}
+        <div className="flex flex-row items-center justify-center w-full max-w-6xl mx-auto min-h-[600px]">
+          <div className="flex-1 flex flex-col items-center justify-center">
+            {/* Moved X and O stats above more */}
+            <h1
+              className={`text-4xl font-bold mb-14 ${
+                theme === "dark" ? "text-white" : "text-gray-800"
+              }`}
+            >
+              TicTacToe Game
+            </h1>
+            <div className="mb-8 flex justify-center space-x-6 text-md">
+              <div className="bg-blue-100 text-blue-700 rounded px-3 py-1 font-semibold">
+                X — Wins: {xStats.wins} | Losses: {xStats.losses} | Draws:{" "}
+                {xStats.draws}
+              </div>
+              <div className="bg-green-100 text-green-700 rounded px-3 py-1 font-semibold">
+                O — Wins: {oStats.wins} | Losses: {oStats.losses} | Draws:{" "}
+                {oStats.draws}
+              </div>
+            </div>
+
+            <div
+              className="bg-white rounded-xl shadow-md p-6 max-w-sm w-full flex flex-col items-center transition-shadow duration-500"
+              style={{
+                boxShadow:
+                  currentPlayer === "X"
+                    ? "0 0 25px 10px rgba(59, 130, 246, 0.7)" // blue glow for X
+                    : currentPlayer === "O"
+                    ? "0 0 25px 10px rgba(34, 197, 94, 0.4)" // green glow for O
+                    : "0 0 25px 10px rgba(0, 0, 0, 0.15)", // fallback subtle shadow
+              }}
+            >
+              <div className="w-full mb-5 text-center">
+                <h2 className="text-xl font-semibold">
+                  {status === "start"
+                    ? "Click to start"
+                    : status === "in_progress"
+                    ? "Game in Progress"
+                    : "Game Ended"}
+                </h2>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md p-8 max-w-lg w-full flex flex-col items-center">
-                <div className="w-full mb-5 text-center">
-                  <h2 className="text-xl font-semibold">
-                    {status === "start"
-                      ? "Click to start"
-                      : status === "in_progress"
-                      ? "Game in Progress"
-                      : "Game Ended"}
-                  </h2>
-                </div>
-
-                <div
-                  className="grid gap-3 w-full"
-                  style={{
-                    gridTemplateColumns: `repeat(${boardSize}, minmax(0, 1fr))`,
-                  }}
-                >
-                  {board.map((cell, idx) => {
-                    const isWinningCell = winningLine.includes(idx);
-                    return (
-                      <button
-                        key={idx}
-                        className={`w-full aspect-square flex items-center justify-center text-4xl font-bold border-2 rounded-md transition focus:outline-none focus:ring-2 ${
-                          isWinningCell
-                            ? "bg-green-200 border-green-500 focus:ring-green-600 hover:bg-green-300"
-                            : "bg-gray-100 border-blue-400 focus:ring-blue-600 hover:bg-blue-100"
-                        }`}
-                        onClick={() => handleClick(idx)}
-                      >
-                        {cell}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-col items-center justify-center mt-6 space-y-4">
-                  {history.length > 1 && (
+              <div
+                className="grid gap-2 w-full"
+                style={{
+                  gridTemplateColumns: `repeat(${boardSize}, minmax(0, 1fr))`,
+                }}
+              >
+                {board.map((cell, idx) => {
+                  const isWinningCell = winningLine.includes(idx);
+                  return (
                     <button
-                      onClick={undoMove}
-                      className="px-6 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-700 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                      key={idx}
+                      className={`w-full aspect-square flex items-center justify-center text-3xl font-bold border-2 rounded-md transition focus:outline-none focus:ring-2 ${
+                        isWinningCell
+                          ? "bg-green-200 border-green-500 focus:ring-green-600 hover:bg-green-300"
+                          : "bg-gray-100 border-blue-400 focus:ring-blue-600 hover:bg-blue-100"
+                      }`}
+                      onClick={() => handleClick(idx)}
                     >
-                      Undo
+                      {cell}
                     </button>
-                  )}
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-col items-center justify-center mt-6 space-y-4">
+                {history.length > 1 && (
                   <button
-                    onClick={resetGame}
-                    className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    onClick={undoMove}
+                    className="px-6 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-700 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-yellow-400"
                   >
-                    Start New Game
+                    Undo
                   </button>
-                </div>
+                )}
+                <button
+                  onClick={resetGame}
+                  className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 transition font-semibold shadow focus:outline-none focus:ring-2 focus:ring-blue-400"
+                >
+                  Start New Game
+                </button>
               </div>
             </div>
-            <div className="flex-none w-[370px] ml-12">
-              <h2
-                className={`text-2xl font-bold mb-6 text-center ${
+          </div>
+
+          <div className="flex flex-col ml-12 space-y-6 w-[370px] justify-center">
+            <Scoreboard refreshKey={refreshScoreboard} />
+            <div className="mb-4 flex flex-col items-center">
+              <label
+                className={`text-xl font-bold mb-2 text-center ${
                   theme === "dark" ? "text-white" : "text-gray-800"
                 }`}
               >
-                Last 10 results
-              </h2>
-              <Scoreboard refreshKey={refreshScoreboard} />
+                View Previous Finished Games
+              </label>
+              <select
+                id="finishedGamesDropdown"
+                value={selectedFinishedGameId || ""}
+                onChange={(e) => {
+                  const selectedId = Number(e.target.value);
+                  setSelectedFinishedGameId(selectedId);
+                  const game =
+                    previousGames.find((g) => g.id === selectedId) || null;
+                  setSelectedGame(game);
+                  setPopupVisible(true);
+                }}
+                className="w-35 p-2 rounded border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              >
+                {previousGames.length === 0 && (
+                  <option value="" disabled>
+                    No finished games found
+                  </option>
+                )}
+                {previousGames.map((game) => (
+                  <option key={game.id} value={game.id}>
+                    Game #{game.id}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            <PreviousGamePopup
+              show={popupVisible}
+              onClose={() => setPopupVisible(false)}
+              game={selectedGame}
+            />
           </div>
         </div>
       </div>
