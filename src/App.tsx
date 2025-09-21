@@ -281,7 +281,15 @@ function App() {
 
   return (
     <>
-      <div className="fixed top-60 left-30 z-20 bg-gray-200 p-3 rounded shadow border-gray-700 border-2">
+      <div
+        className={`fixed inset-0 -z-10 opacity-70 bg-gradient-to-tr ${
+          theme === "dark"
+            ? "from-blue-900 via-slate-900 to-indigo-900"
+            : "from-slate-200 via-sky-100 to-blue-300"
+        }`}
+      ></div>
+
+      <div className="fixed top-70 left-27 z-20 p-3">
         <BoardSizeSelector
           boardSize={boardSize}
           setBoardSize={setBoardSize}
@@ -290,7 +298,7 @@ function App() {
       </div>
       {showConfetti && <ReactConfetti />}
 
-      <div className="mb-4 fixed top-100 left-30 bg-white dark:bg-gray-800 shadow-lg rounded-lg px-6 py-3 font-semibold text-lg text-gray-700 dark:text-gray-200 cursor-default select-none transform transition-transform duration-300 hover:scale-105 text-center max-w-[120px]">
+      <div className="mb-4 fixed top-110 left-30 bg-white dark:bg-gray-700 shadow-lg rounded-lg px-6 py-3 font-semibold text-lg text-gray-700 dark:text-gray-200 cursor-default select-none transform transition-transform duration-300 hover:scale-105 text-center max-w-[120px]">
         <div>Game Timer</div>
         <div className="text-green-600">
           {Math.floor(secondsElapsed / 60)
@@ -302,28 +310,18 @@ function App() {
 
       <div
         className={`min-h-screen w-screen flex items-center justify-center ${
-          theme === "dark" ? "bg-gray-900" : "bg-gray-100"
+          theme === "dark" ? "bg-transparent" : "bg-transparent"
         }`}
       >
-        <div className="fixed top-8 left-10 z-50 border-blue-400 border-2">
-          <button
-            onClick={toggleTheme}
-            className="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-black dark:text-white font-semibold"
-          >
-            Switch to {theme === "light" ? "Dark" : "Light"} Mode
-          </button>
-        </div>
-
         {/* Main flex container with vertical centering */}
         <div className="flex flex-row items-center justify-center w-full max-w-6xl mx-auto min-h-[600px]">
           <div className="flex-1 flex flex-col items-center justify-center">
-            {/* Moved X and O stats above more */}
             <h1
-              className={`text-4xl font-bold mb-14 ${
-                theme === "dark" ? "text-white" : "text-gray-800"
-              }`}
+              className={`text-5xl font-extrabold mb-14 underline tracking-wide ${
+                theme === "dark" ? "text-gray-100" : "text-gray-800"
+              } animate-bounce select-none`}
             >
-              TicTacToe Game
+              Tic-Tac-Toe
             </h1>
             <div className="mb-8 flex justify-center space-x-6 text-md">
               <div className="bg-blue-100 text-blue-700 rounded px-3 py-1 font-semibold">
@@ -401,8 +399,22 @@ function App() {
           </div>
 
           <div className="flex flex-col ml-12 space-y-6 w-[370px] justify-center">
+            <div className="mb-10 flex flex-col items-center">
+              <div className="z-50 border-blue-400 border-2">
+                <button
+                  onClick={toggleTheme}
+                  className="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-black dark:text-white font-semibold"
+                >
+                  Switch to {theme === "light" ? "Dark" : "Light"} Mode
+                </button>
+              </div>
+            </div>
             <Scoreboard refreshKey={refreshScoreboard} />
-            <div className="mb-4 flex flex-col items-center">
+            <div
+              className={`mb-4 flex flex-col items-center rounded-lg p-4 w-full max-w-[370px] border-4 ${
+                theme === "dark" ? "border-white" : "border-gray-700"
+              }`}
+            >
               <label
                 className={`text-xl font-bold mb-2 text-center ${
                   theme === "dark" ? "text-white" : "text-gray-800"
@@ -421,7 +433,7 @@ function App() {
                   setSelectedGame(game);
                   setPopupVisible(true);
                 }}
-                className="w-35 p-2 rounded border border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="w-35 p-2 rounded border font-bold border-gray-400 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               >
                 {previousGames.length === 0 && (
                   <option value="" disabled>

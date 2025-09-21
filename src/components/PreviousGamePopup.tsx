@@ -26,11 +26,11 @@ const PreviousGamePopup: React.FC<PreviousGamePopupProps> = ({
 
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-white/20 dark:bg-black/20 backdrop-blur-md flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 p-4 rounded shadow-lg max-h-[90vh] overflow-auto"
+        className="bg-white dark:bg-gray-700 p-4 rounded shadow-lg max-h-[90vh] overflow-auto"
         onClick={(e) => e.stopPropagation()}
         style={{
           width: `${cellSizeVw * boardSize}vw`,
