@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import Scoreboard from "./components/Scoreboard";
 import BoardSizeSelector from "./components/BoardSizeSelector";
+import ReactConfetti from "react-confetti";
 
 // Generate all winning lines dynamically for n x n board
 function generateWinningLines(n: number): number[][] {
@@ -73,6 +74,27 @@ function App() {
   const [status, setStatus] = useState("start");
   const [winningLine, setWinningLine] = useState<number[]>([]);
   const [refreshScoreboard, setRefreshScoreboard] = useState(0);
+  const [xStats, setXStats] = useState({ wins: 0, losses: 0, draws: 0 });
+  const [oStats, setOStats] = useState({ wins: 0, losses: 0, draws: 0 });
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [timerActive, setTimerActive] = useState(false);
+  useEffect(() => {
+    let interval: number | null = null;
+
+    if (timerActive) {
+      interval = window.setInterval(() => {
+        setSecondsElapsed((prev) => prev + 1);
+      }, 1000);
+    }
+
+    return () => {
+      if (interval !== null) {
+        window.clearInterval(interval);
+      }
+    };
+  }, [timerActive]);
+
   const [history, setHistory] = useState<
     {
       board: (string | null)[];
@@ -141,6 +163,31 @@ function App() {
     setCurrentPlayer(currentPlayer === "X" ? "O" : "X");
     setWinningLine(result?.winningLine || []);
     setStatus(newStatus);
+    if (status === "start") {
+      setTimerActive(true); // start timer on first move
+    }
+
+    if (newStatus !== "in_progress" && newStatus !== "start") {
+      setTimerActive(false); // stop timer on game end
+    }
+
+    if (newStatus === "Player X won" || newStatus === "Player O won") {
+      setShowConfetti(true);
+    } else {
+      setShowConfetti(false);
+    }
+
+    // Statistics update after checking winner
+    if (result?.winner === "X") {
+      setXStats((stats) => ({ ...stats, wins: stats.wins + 1 }));
+      setOStats((stats) => ({ ...stats, losses: stats.losses + 1 }));
+    } else if (result?.winner === "O") {
+      setOStats((stats) => ({ ...stats, wins: stats.wins + 1 }));
+      setXStats((stats) => ({ ...stats, losses: stats.losses + 1 }));
+    } else if (result?.winner === "draw") {
+      setXStats((stats) => ({ ...stats, draws: stats.draws + 1 }));
+      setOStats((stats) => ({ ...stats, draws: stats.draws + 1 }));
+    }
 
     saveGame(newBoard, currentPlayer, newStatus).then(() =>
       setRefreshScoreboard((prev) => prev + 1)
@@ -171,6 +218,9 @@ function App() {
         winningLine: [],
       },
     ]);
+    setSecondsElapsed(0);
+    setTimerActive(false);
+    setShowConfetti(false);
   }
 
   function undoMove() {
@@ -191,19 +241,31 @@ function App() {
 
   return (
     <>
-      <div className="fixed top-80 left-30 z-20 bg-gray-200 p-3 rounded shadow border-blue-400 border-2">
+      <div className="fixed top-60 left-30 z-20 bg-gray-200 p-3 rounded shadow border-blue-400 border-2">
         <BoardSizeSelector
           boardSize={boardSize}
           setBoardSize={setBoardSize}
           resetGame={resetGame}
         />
       </div>
+      {showConfetti && <ReactConfetti />}
+
+      <div className="mb-4 fixed top-100 left-30 bg-white dark:bg-gray-800 shadow-lg rounded-lg px-6 py-3 font-semibold text-lg text-gray-700 dark:text-gray-200 cursor-default select-none transform transition-transform duration-300 hover:scale-105 text-center max-w-[120px]">
+        <div>Game Timer</div>
+        <div>
+          {Math.floor(secondsElapsed / 60)
+            .toString()
+            .padStart(2, "0")}
+          :{(secondsElapsed % 60).toString().padStart(2, "0")}
+        </div>
+      </div>
+
       <div
         className={`min-h-screen w-screen flex items-center justify-center ${
           theme === "dark" ? "bg-gray-900" : "bg-gray-100"
         }`}
       >
-        <div className="fixed top-10 left-20 z-50  border-blue-400 border-2">
+        <div className="fixed top-5 left-10 z-50  border-blue-400 border-2">
           <button
             onClick={toggleTheme}
             className="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-black dark:text-white font-semibold"
@@ -221,6 +283,16 @@ function App() {
               >
                 TicTacToe Game
               </h1>
+              <div className="mb-5 flex justify-center space-x-8">
+                <div className="bg-blue-100 text-blue-700 rounded px-4 py-2 font-semibold">
+                  X — Wins: {xStats.wins} | Losses: {xStats.losses} | Draws:{" "}
+                  {xStats.draws}
+                </div>
+                <div className="bg-green-100 text-green-700 rounded px-4 py-2 font-semibold">
+                  O — Wins: {oStats.wins} | Losses: {oStats.losses} | Draws:{" "}
+                  {oStats.draws}
+                </div>
+              </div>
 
               <div className="bg-white rounded-xl shadow-md p-8 max-w-lg w-full flex flex-col items-center">
                 <div className="w-full mb-5 text-center">
